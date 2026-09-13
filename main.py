@@ -52,15 +52,16 @@ movie_list = movie_rank["영화명"].tolist()
 st.sidebar.header("🔍 옵션 선택")
 selected_movie = st.sidebar.selectbox("분석할 영화를 선택하세요:", movie_list)
 
-# [5. 기타 - 구역 나누기 (Section 1)]
-st.header("1. 일별 관객수 추이")
-
-# 선택한 영화의 데이터만 필터링
+# 선택한 영화의 데이터 필터링
 filtered_df = df[df["영화명"] == selected_movie]
 
-# [4. 선그래프 그리기]
+# --------------------------------------------------
+# [구역 1] 일별 관객수 추이 (선그래프)
+# --------------------------------------------------
+st.header("1. 일별 관객수 추이")
+
 # Plotly를 사용하여 기준일자별 해당일관객수 선그래프 생성
-fig = px.line(
+fig1 = px.line(
     filtered_df,
     x="기준일자",
     y="해당일관객수",
@@ -70,15 +71,33 @@ fig = px.line(
 )
 
 # 그래프 화면에 출력
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig1, use_container_width=True)
 
-# [5. 기타 - 그래프 설명 문구 자리]
+# 그래프 설명 문구
 st.info(
     f"💡 **이 그래프로 알 수 있는 것:** {selected_movie}의 개봉 초기 관객 집중도 및 주말/평일 관객수 변동 패턴을 파악할 수 있습니다."
 )
 
 st.markdown("---")
 
-# [추가 구역 예시 - 추후 다른 그래프를 넣을 자리]
-st.header("2. 추가 분석 구역 (예정)")
-st.caption("※ 이 구역에는 추후 다른 형태의 그래프나 분석 결과가 들어갈 예정입니다.")
+# --------------------------------------------------
+# [구역 2] 누적 관객수 추이 (영역 차트)
+# --------------------------------------------------
+st.header("2. 누적 관객수 추이")
+
+# Plotly를 사용하여 기준일자별 누적관객수 영역 차트(Area Chart) 생성
+fig2 = px.area(
+    filtered_df,
+    x="기준일자",
+    y="누적관객수",
+    title=f"[{selected_movie}] 누적 관객수 성장 추이",
+    labels={"기준일자": "날짜", "누적관객수": "누적 관객수(명)"},
+)
+
+# 그래프 화면에 출력
+st.plotly_chart(fig2, use_container_width=True)
+
+# 그래프 설명 문구
+st.info(
+    f"💡 **이 그래프로 알 수 있는 것:** 시간 흐름에 따른 {selected_movie}의 총 관객 누적 속도와 주요 관객 증가 구간(흥행 분기점)을 확인할 수 있습니다."
+)
