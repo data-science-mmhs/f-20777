@@ -105,15 +105,27 @@ st.info(
 st.markdown("---")
 
 # --------------------------------------------------
-# [구역 3] TOP 5 영화 누적관객수 비교 (다중 선그래프)
+# [구역 3] 장기 흥행(20일 이상 등장) TOP 5 영화 누적관객수 비교 (수정됨)
 # --------------------------------------------------
-st.header("3. 흥행 TOP 5 영화 누적관객수 비교")
+st.header("3. 장기 흥행 TOP 5 영화 누적관객수 비교")
 
-# 누적관객수 상위 5개 영화 이름 추출
-top5_movies = movie_rank.head(5)["영화명"].tolist()
+# 1. 영화명별 등장 일수(행 수) 계산
+movie_days = df.groupby("영화명").size()
 
-# 전체 데이터에서 TOP 5 영화 데이터만 필터링
-top5_df = df[df["영화명"].isin(top5_movies)]
+# 2. 20일 이상 등장한 영화목록만 추출
+movies_over_20days = movie_days[movie_days >= 20].index
+
+# 3. 20일 이상 등장한 영화들 중 누적관객수 기준 TOP 5 선정
+top5_long_run_movies = (
+    df[df["영화명"].isin(movies_over_20days)]
+    .groupby("영화명")["누적관객수"]
+    .max()
+    .nlargest(5)
+    .index.tolist()
+)
+
+# 4. 해당 TOP 5 영화의 전체 데이터 필터링
+top5_df = df[df["영화명"].isin(top5_long_run_movies)]
 
 # color="영화명"을 지정하여 영화별로 다른 색상과 범례가 적용되도록 생성
 fig3 = px.line(
@@ -121,7 +133,7 @@ fig3 = px.line(
     x="기준일자",
     y="누적관객수",
     color="영화명",  # 영화별 선 색상 분리 및 범례 생성
-    title="누적관객수 TOP 5 영화 추이 비교",
+    title="장기 흥행(TOP 10 20일 이상 차트인) TOP 5 영화 추이 비교",
     labels={
         "기준일자": "날짜",
         "누적관객수": "누적 관객수(명)",
@@ -134,5 +146,5 @@ st.plotly_chart(fig3, use_container_width=True)
 
 # 그래프 설명 문구
 st.info(
-    "💡 **이 그래프로 알 수 있는 것:** 최고 흥행작 TOP 5 간의 최종 누적 관객수 격차와 흥행 곡선 기울기(관객 동원 속도)를 다각도로 비교 분석할 수 있습니다."
+    "💡 **이 그래프로 알 수 있는 것:** TOP 10 순위에 20일 이상 머무르며 롱런(Long-run)에 성공한 핵심 상위 5개 영화의 장기 누적관객수 동원 속도와 성장 곡선을 비교할 수 있습니다."
 )
