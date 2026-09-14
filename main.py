@@ -1,4 +1,5 @@
 import pandas as pd
+import plotly.graph_objects as go
 import plotly.express as px
 import streamlit as st
 
@@ -105,7 +106,7 @@ st.info(
 st.markdown("---")
 
 # --------------------------------------------------
-# [구역 3] 장기 흥행(20일 이상 등장) TOP 5 영화 누적관객수 비교 (수정됨)
+# [구역 3] 장기 흥행 TOP 5 영화 누적관객수 비교 (다중 선그래프)
 # --------------------------------------------------
 st.header("3. 장기 흥행 TOP 5 영화 누적관객수 비교")
 
@@ -147,4 +148,67 @@ st.plotly_chart(fig3, use_container_width=True)
 # 그래프 설명 문구
 st.info(
     "💡 **이 그래프로 알 수 있는 것:** TOP 10 순위에 20일 이상 머무르며 롱런(Long-run)에 성공한 핵심 상위 5개 영화의 장기 누적관객수 동원 속도와 성장 곡선을 비교할 수 있습니다."
+)
+
+st.markdown("---")
+
+# --------------------------------------------------
+# [구역 4] 전체 TOP 10 일별 총 관객수 및 7일 이동평균선
+# --------------------------------------------------
+st.header("4. 전체 박스오피스 일별 총 관객수 및 7일 이동평균")
+
+# 1. 기준일자별 TOP 10 영화의 해당일관객수 총합 계산
+daily_total = (
+    df.groupby("기준일자")["해당일관객수"]
+    .sum()
+    .reset_index()
+    .sort_values(by="기준일자")
+)
+
+# 2. 7일 이동평균(Moving Average) 구하기
+daily_total["7일_이동평균"] = (
+    daily_total["해당일관객수"].rolling(window=7, min_periods=1).mean()
+)
+
+# 3. Plotly graph_objects를 이용해 원본 선과 이동평균 선 함께 그리기
+fig4 = go.Figure()
+
+# (1) 원본 일별 총 관객수 (연하게 표기)
+fig4.add_trace(
+    go.Scatter(
+        x=daily_total["기준일자"],
+        y=daily_total["해당일관객수"],
+        mode="lines",
+        name="일별 총 관객수 (일간 변동)",
+        line=dict(color="lightskyblue", width=1.5),
+        opacity=0.45,  # 투명도를 주어 연하게 표현
+    )
+)
+
+# (2) 7일 이동평균선 (진하게 표기)
+fig4.add_trace(
+    go.Scatter(
+        x=daily_total["기준일자"],
+        y=daily_total["7일_이동평균"],
+        mode="lines",
+        name="7일 이동평균선",
+        line=dict(color="firebrick", width=3),  # 두껍고 진한 선
+    )
+)
+
+# 레이아웃 설정
+fig4.update_layout(
+    title="전체 박스오피스 관객수 흐름 (일별 총합 vs 7일 이동평균)",
+    xaxis_title="날짜",
+    yaxis_title="관객수(명)",
+    hovermode="x unified",
+    legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
+)
+
+# 그래프 화면에 출력
+st.plotly_chart(fig4, use_container_width=True)
+
+# 그래프 설명 문구
+st.info(
+    "💡 **이 그래프로 알 수 있는 것:** 주말과 평일 사이의 심한 일별 관객수 변동(노이즈)을 평활화(Smooth)하여 극장가 전체 관객 동원력의 전반적인 상승·하락 흐름 및 성수기/비수기 트렌드를 명확하게 파악할 수 있습니다."
 )
