@@ -113,3 +113,35 @@ st.info(
     f"**이 그래프로 알 수 있는 것:** 대부분의 영화는 관객수 하위 구간(약 100만~200만 명 이하)에 집중되어 있는 반면, "
     f"가장 많은 관객을 동원한 영화는 **'{top_movie_name}'**(총 {top_movie_audi:,}명)으로 극소수의 흥행작이 상위 구간에 위치함을 볼 수 있습니다."
 )
+
+st.divider()
+
+# ---------------------------------------------------------
+# 네 번째 그래프: 개봉일 스크린수 vs 총 관객수 (산점도)
+# ---------------------------------------------------------
+st.header("4. 개봉일 스크린수와 총 관객수의 관계")
+
+# 산점도 생성
+fig_scatter = px.scatter(
+    df,
+    x='first_scrn',
+    y='total_audi',
+    color='genre',
+    hover_name='movieNm',
+    labels={
+        'first_scrn': '개봉일 스크린수',
+        'total_audi': '총 관객수',
+        'genre': '장르'
+    },
+    title="개봉일 스크린수 대비 총 관객수 (장르별 구분)"
+)
+
+# 툴팁 설정 (마우스 올리면 영화명, 장르, 개봉일 스크린수, 총 관객수 표시)
+fig_scatter.update_traces(
+    hovertemplate='<b>%{hovertext}</b><br>장르: %{fullData.name}<br>개봉일 스크린수: %{x:,}개<br>총 관객수: %{y:,}명<extra></extra>'
+)
+
+st.plotly_chart(fig_scatter, use_container_width=True)
+
+# 그래프 해석 구역
+st.info("**이 그래프로 알 수 있는 것:** 개봉일 스크린 확보 수준이 최종 흥행(총 관객수)에 미치는 상관관계를 확인할 수 있으며, 장르별 선호도와 배급 규모 간의 특성을 비교해 볼 수 있습니다.")
