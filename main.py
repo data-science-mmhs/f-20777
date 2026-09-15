@@ -43,35 +43,35 @@ fig_donut = px.pie(
 # 툴팁에 편수와 비율 명확히 표시
 fig_donut.update_traces(
     textinfo='percent+label',
-    hovertemplate='<b>장르: %{label}</b><br>영화 편수: %{value}편<br>비율: %{percent}'
+    hovertemplate='<b>장르: %{label}</b><br>영화 편수: %{value}편<br>비율: %{percent}<extra></extra>'
 )
 
 st.plotly_chart(fig_donut, use_container_width=True)
 
-# 그래프 해석/설명 구역
+# 그래프 해석 구역
 st.info("**이 그래프로 알 수 있는 것:** 박스오피스 상위권 영화 중 가장 큰 비중을 차지하는 주력 장르와 장르별 편수 분포를 한눈에 파악할 수 있습니다.")
 
 st.divider()
 
 # ---------------------------------------------------------
-# 추가 분석 구역 (확장성을 위한 기본 틀)
+# 두 번째 그래프: 장르 및 영화별 총 관객수 (트리맵)
 # ---------------------------------------------------------
-st.header("2. 개봉일 스크린수와 총 관객수 관계")
+st.header("2. 장르 및 영화별 총 관객수 분포")
 
-fig_scatter = px.scatter(
+# 계층구조(장르 > 영화명) 및 타일 크기(총 관객수) 설정
+fig_treemap = px.treemap(
     df,
-    x='first_scrn',
-    y='total_audi',
-    color='genre',
-    hover_name='movieNm',
-    labels={
-        'first_scrn': '개봉일 스크린수',
-        'total_audi': '총 관객수',
-        'genre': '장르'
-    },
-    title="개봉일 스크린수 대비 총 관객수"
+    path=['genre', 'movieNm'],
+    values='total_audi',
+    title="장르 및 영화별 총 관객수 (크기: 총 관객수)"
 )
 
-st.plotly_chart(fig_scatter, use_container_width=True)
+# 툴팁에 영화명(또는 장르명)과 총 관객수 표시
+fig_treemap.update_traces(
+    hovertemplate='<b>%{label}</b><br>총 관객수: %{value:,}명<extra></extra>'
+)
 
-st.info("**이 그래프로 알 수 있는 것:** 개봉 초기의 스크린 확보 수준이 최종 관객수 흥행에 미치는 상관관계를 확인할 수 있습니다.")
+st.plotly_chart(fig_treemap, use_container_width=True)
+
+# 그래프 해석 구역
+st.info("**이 그래프로 알 수 있는 것:** 어떤 장르가 전체 관객수를 주로 견인했는지, 그리고 각 장르 내에서 어떤 영화가 가장 큰 관객 비중을 차지했는지 직관적으로 비교할 수 있습니다.")
