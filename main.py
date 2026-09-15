@@ -1,214 +1,77 @@
-import pandas as pd
-import plotly.graph_objects as go
-import plotly.express as px
 import streamlit as st
+import pandas as pd
+import plotly.express as px
 
-# 페이지 기본 설정 (타이틀, 레이아웃)
+# 페이지 설정
 st.set_page_config(
-    page_title="영화 박스오피스 분석 App",
-    layout="wide",
+    page_title="영화 데이터 그래프 - 분포와 관계",
+    layout="wide"
 )
 
+st.title("영화 데이터 그래프 - 분포와 관계")
 
-# [1. 데이터 불러오기 및 캐싱]
-# @st.cache_data를 사용하면 데이터를 매번 새로 불러오지 않고 저장해두어 앱이 빨라집니다.
+# 데이터 불러오기 및 전처리
 @st.cache_data
 def load_data():
-    url = "https://raw.githubusercontent.com/keep-growing-park/data-science/refs/heads/main/dataset/kobis_1year_boxoffice.csv"
+    url = "https://raw.githubusercontent.com/greatsong/modudata/main/data/kobis_movies.csv"
     df = pd.read_csv(url)
-
-    # [2. 날짜 전처리]
-    # 결측치가 포함된 행 삭제
-    df = df.dropna()
-
-    # '기준일자' 컬럼을 datetime 형식으로 변환 (yyyy-mm-dd)
-    df["기준일자"] = pd.to_datetime(df["기준일자"])
-
-    # 전체 데이터를 기준일자 순서대로 정렬
-    df = df.sort_values(by="기준일자").reset_index(drop=True)
-
+    
+    # genre 열 전처리 (세로막대 기호 '|' 구분자 처리하여 첫 번째 장르만 추출)
+    df['genre'] = df['genre'].astype(str).apply(lambda x: x.split('|')[0] if x else x)
     return df
 
-
-# 데이터 로드
 df = load_data()
 
-# 앱 제목
-st.title("🎬 박스오피스 데이터 분석 웹앱")
-st.markdown("---")
+# ---------------------------------------------------------
+# 첫 번째 그래프: 장르별 영화 편수 (도넛 그래프)
+# ---------------------------------------------------------
+st.header("1. 장르별 영화 분포")
 
-# [3. 영화 선택 기능]
-# 영화별 최대 누적관객수를 구해서 내림차순 정렬
-movie_rank = (
-    df.groupby("영화명")["누적관객수"]
-    .max()
-    .reset_index()
-    .sort_values(by="누적관객수", ascending=False)
+# 장르별 영화 수 집계
+genre_counts = df['genre'].value_counts().reset_index()
+genre_counts.columns = ['genre', 'count']
+
+# 플롯리 도넛 그래프 생성
+fig_donut = px.pie(
+    genre_counts,
+    names='genre',
+    values='count',
+    hole=0.4,
+    title="장르별 영화 편수 비율"
 )
 
-# 내림차순 정렬된 전체 영화 이름 목록 추출
-movie_list = movie_rank["영화명"].tolist()
-
-# 사이드바에 영화 선택 드롭다운 생성
-st.sidebar.header("🔍 옵션 선택")
-selected_movie = st.sidebar.selectbox("분석할 영화를 선택하세요:", movie_list)
-
-# 선택한 영화의 데이터 필터링
-filtered_df = df[df["영화명"] == selected_movie]
-
-# --------------------------------------------------
-# [구역 1] 일별 관객수 추이 (선그래프)
-# --------------------------------------------------
-st.header("1. 일별 관객수 추이")
-
-# Plotly를 사용하여 기준일자별 해당일관객수 선그래프 생성
-fig1 = px.line(
-    filtered_df,
-    x="기준일자",
-    y="해당일관객수",
-    title=f"[{selected_movie}] 일별 관객수 변화 Trend",
-    markers=True,  # 데이터 지점에 점 표시
-    labels={"기준일자": "날짜", "해당일관객수": "해당일 관객수(명)"},
+# 툴팁에 편수와 비율 명확히 표시
+fig_donut.update_traces(
+    textinfo='percent+label',
+    hovertemplate='<b>장르: %{label}</b><br>영화 편수: %{value}편<br>비율: %{percent}'
 )
 
-# 그래프 화면에 출력
-st.plotly_chart(fig1, use_container_width=True)
+st.plotly_chart(fig_donut, use_container_width=True)
 
-# 그래프 설명 문구
-st.info(
-    f"💡 **이 그래프로 알 수 있는 것:** {selected_movie}의 개봉 초기 관객 집중도 및 주말/평일 관객수 변동 패턴을 파악할 수 있습니다."
-)
+# 그래프 해석/설명 구역
+st.info("**이 그래프로 알 수 있는 것:** 박스오피스 상위권 영화 중 가장 큰 비중을 차지하는 주력 장르와 장르별 편수 분포를 한눈에 파악할 수 있습니다.")
 
-st.markdown("---")
+st.divider()
 
-# --------------------------------------------------
-# [구역 2] 누적 관객수 추이 (영역 차트)
-# --------------------------------------------------
-st.header("2. 누적 관객수 추이")
+# ---------------------------------------------------------
+# 추가 분석 구역 (확장성을 위한 기본 틀)
+# ---------------------------------------------------------
+st.header("2. 개봉일 스크린수와 총 관객수 관계")
 
-# Plotly를 사용하여 기준일자별 누적관객수 영역 차트(Area Chart) 생성
-fig2 = px.area(
-    filtered_df,
-    x="기준일자",
-    y="누적관객수",
-    title=f"[{selected_movie}] 누적 관객수 성장 추이",
-    labels={"기준일자": "날짜", "누적관객수": "누적 관객수(명)"},
-)
-
-# 그래프 화면에 출력
-st.plotly_chart(fig2, use_container_width=True)
-
-# 그래프 설명 문구
-st.info(
-    f"💡 **이 그래프로 알 수 있는 것:** 시간 흐름에 따른 {selected_movie}의 총 관객 누적 속도와 주요 관객 증가 구간(흥행 분기점)을 확인할 수 있습니다."
-)
-
-st.markdown("---")
-
-# --------------------------------------------------
-# [구역 3] 장기 흥행 TOP 5 영화 누적관객수 비교 (다중 선그래프)
-# --------------------------------------------------
-st.header("3. 장기 흥행 TOP 5 영화 누적관객수 비교")
-
-# 1. 영화명별 등장 일수(행 수) 계산
-movie_days = df.groupby("영화명").size()
-
-# 2. 20일 이상 등장한 영화목록만 추출
-movies_over_20days = movie_days[movie_days >= 20].index
-
-# 3. 20일 이상 등장한 영화들 중 누적관객수 기준 TOP 5 선정
-top5_long_run_movies = (
-    df[df["영화명"].isin(movies_over_20days)]
-    .groupby("영화명")["누적관객수"]
-    .max()
-    .nlargest(5)
-    .index.tolist()
-)
-
-# 4. 해당 TOP 5 영화의 전체 데이터 필터링
-top5_df = df[df["영화명"].isin(top5_long_run_movies)]
-
-# color="영화명"을 지정하여 영화별로 다른 색상과 범례가 적용되도록 생성
-fig3 = px.line(
-    top5_df,
-    x="기준일자",
-    y="누적관객수",
-    color="영화명",  # 영화별 선 색상 분리 및 범례 생성
-    title="장기 흥행(TOP 10 20일 이상 차트인) TOP 5 영화 추이 비교",
+fig_scatter = px.scatter(
+    df,
+    x='first_scrn',
+    y='total_audi',
+    color='genre',
+    hover_name='movieNm',
     labels={
-        "기준일자": "날짜",
-        "누적관객수": "누적 관객수(명)",
-        "영화명": "영화 제목",
+        'first_scrn': '개봉일 스크린수',
+        'total_audi': '총 관객수',
+        'genre': '장르'
     },
+    title="개봉일 스크린수 대비 총 관객수"
 )
 
-# 그래프 화면에 출력
-st.plotly_chart(fig3, use_container_width=True)
+st.plotly_chart(fig_scatter, use_container_width=True)
 
-# 그래프 설명 문구
-st.info(
-    "💡 **이 그래프로 알 수 있는 것:** TOP 10 순위에 20일 이상 머무르며 롱런(Long-run)에 성공한 핵심 상위 5개 영화의 장기 누적관객수 동원 속도와 성장 곡선을 비교할 수 있습니다."
-)
-
-st.markdown("---")
-
-# --------------------------------------------------
-# [구역 4] 전체 TOP 10 일별 총 관객수 및 7일 이동평균선
-# --------------------------------------------------
-st.header("4. 전체 박스오피스 일별 총 관객수 및 7일 이동평균")
-
-# 1. 기준일자별 TOP 10 영화의 해당일관객수 총합 계산
-daily_total = (
-    df.groupby("기준일자")["해당일관객수"]
-    .sum()
-    .reset_index()
-    .sort_values(by="기준일자")
-)
-
-# 2. 7일 이동평균(Moving Average) 구하기
-daily_total["7일_이동평균"] = (
-    daily_total["해당일관객수"].rolling(window=7, min_periods=1).mean()
-)
-
-# 3. Plotly graph_objects를 이용해 원본 선과 이동평균 선 함께 그리기
-fig4 = go.Figure()
-
-# (1) 원본 일별 총 관객수 (연하게 표기)
-fig4.add_trace(
-    go.Scatter(
-        x=daily_total["기준일자"],
-        y=daily_total["해당일관객수"],
-        mode="lines",
-        name="일별 총 관객수 (일간 변동)",
-        line=dict(color="lightskyblue", width=1.5),
-        opacity=0.45,  # 투명도를 주어 연하게 표현
-    )
-)
-
-# (2) 7일 이동평균선 (진하게 표기)
-fig4.add_trace(
-    go.Scatter(
-        x=daily_total["기준일자"],
-        y=daily_total["7일_이동평균"],
-        mode="lines",
-        name="7일 이동평균선",
-        line=dict(color="firebrick", width=3),  # 두껍고 진한 선
-    )
-)
-
-# 레이아웃 설정
-fig4.update_layout(
-    title="전체 박스오피스 관객수 흐름 (일별 총합 vs 7일 이동평균)",
-    xaxis_title="날짜",
-    yaxis_title="관객수(명)",
-    hovermode="x unified",
-    legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
-)
-
-# 그래프 화면에 출력
-st.plotly_chart(fig4, use_container_width=True)
-
-# 그래프 설명 문구
-st.info(
-    "💡 **이 그래프로 알 수 있는 것:** 주말과 평일 사이의 심한 일별 관객수 변동(노이즈)을 평활화(Smooth)하여 극장가 전체 관객 동원력의 전반적인 상승·하락 흐름 및 성수기/비수기 트렌드를 명확하게 파악할 수 있습니다."
-)
+st.info("**이 그래프로 알 수 있는 것:** 개봉 초기의 스크린 확보 수준이 최종 관객수 흥행에 미치는 상관관계를 확인할 수 있습니다.")
