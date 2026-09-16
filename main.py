@@ -136,7 +136,7 @@ fig_scatter = px.scatter(
     title="개봉일 스크린수 대비 총 관객수 (장르별 구분)"
 )
 
-# 툴팁 설정 (마우스 올리면 영화명, 장르, 개봉일 스크린수, 총 관객수 표시)
+# 툴팁 설정
 fig_scatter.update_traces(
     hovertemplate='<b>%{hovertext}</b><br>장르: %{fullData.name}<br>개봉일 스크린수: %{x:,}개<br>총 관객수: %{y:,}명<extra></extra>'
 )
@@ -149,7 +149,7 @@ st.info("**이 그래프로 알 수 있는 것:** 개봉일 스크린 확보 수
 st.divider()
 
 # ---------------------------------------------------------
-# 다섯 번째 그래프: 주력 장르별 총 관객수 분포 (상자 그림 / Boxplot)
+# 다섯 번째 그래프: 주요 장르별 총 관객수 분포 (상자 그림 / Boxplot)
 # ---------------------------------------------------------
 st.header("5. 주요 장르별 총 관객수 분포 (10편 이상 장르)")
 
@@ -158,14 +158,14 @@ genre_counts_series = df['genre'].value_counts()
 main_genres = genre_counts_series[genre_counts_series >= 10].index.tolist()
 df_filtered = df[df['genre'].isin(main_genres)]
 
-# 박스플롯 생성 (outliers 표시 포함)
+# 박스플롯 생성
 fig_box = px.box(
     df_filtered,
     x='genre',
     y='total_audi',
     color='genre',
     hover_name='movieNm',
-    points='outliers',  # 아웃라이어(이상치) 점 표시
+    points='outliers',
     labels={
         'genre': '장르',
         'total_audi': '총 관객수'
@@ -173,7 +173,7 @@ fig_box = px.box(
     title="주요 장르별 총 관객수 상자 그림 (영화 수 10편 이상 대상)"
 )
 
-# 툴팁에 영화명 및 총 관객수 표시
+# 툴팁 설정
 fig_box.update_traces(
     hovertemplate='<b>%{hovertext}</b><br>총 관객수: %{y:,}명<extra></extra>'
 )
@@ -182,3 +182,38 @@ st.plotly_chart(fig_box, use_container_width=True)
 
 # 그래프 해석 구역
 st.info("**이 그래프로 알 수 있는 것:** 주요 장르별 흥행의 중간값(중앙값)과 범위를 한눈에 비교할 수 있으며, 상자 밖의 점(이상치)을 통해 동일 장르 내에서 이례적으로 대흥행을 거둔 작품을 확인할 수 있습니다.")
+
+st.divider()
+
+# ---------------------------------------------------------
+# 여섯 번째 그래프: 스크린수, 첫 주 관객, 총 관객 관계 (버블 차트)
+# ---------------------------------------------------------
+st.header("6. 개봉일 스크린수, 첫 주 관객수, 총 관객수의 관계 (버블 차트)")
+
+# 버블 차트 생성 (size=first_week_audi)
+fig_bubble = px.scatter(
+    df,
+    x='first_scrn',
+    y='total_audi',
+    size='first_week_audi',
+    color='genre',
+    hover_name='movieNm',
+    size_max=50,  # 버블 최대 크기 조절
+    labels={
+        'first_scrn': '개봉일 스크린수',
+        'total_audi': '총 관객수',
+        'first_week_audi': '첫 주 관객수',
+        'genre': '장르'
+    },
+    title="개봉일 스크린수 대비 총 관객수 (버블 크기: 개봉 첫 주 관객수)"
+)
+
+# 툴팁 설정 (첫 주 관객수 추가 표시)
+fig_bubble.update_traces(
+    hovertemplate='<b>%{hovertext}</b><br>장르: %{fullData.name}<br>개봉일 스크린수: %{x:,}개<br>총 관객수: %{y:,}명<br>첫 주 관객수: %{marker.size:,}명<extra></extra>'
+)
+
+st.plotly_chart(fig_bubble, use_container_width=True)
+
+# 그래프 해석 구역
+st.info("**이 그래프로 알 수 있는 것:** 개봉 초기의 스크린 확보 수(X축)와 첫 주 관객 동원력(버블 크기)이 최종 흥행 성과(Y축)에 어떤 복합적인 영향을 주는지 입체적으로 비교할 수 있습니다.")
