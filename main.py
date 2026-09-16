@@ -198,7 +198,7 @@ fig_bubble = px.scatter(
     size='first_week_audi',
     color='genre',
     hover_name='movieNm',
-    size_max=50,  # 버블 최대 크기 조절
+    size_max=50,
     labels={
         'first_scrn': '개봉일 스크린수',
         'total_audi': '총 관객수',
@@ -208,7 +208,7 @@ fig_bubble = px.scatter(
     title="개봉일 스크린수 대비 총 관객수 (버블 크기: 개봉 첫 주 관객수)"
 )
 
-# 툴팁 설정 (첫 주 관객수 추가 표시)
+# 툴팁 설정
 fig_bubble.update_traces(
     hovertemplate='<b>%{hovertext}</b><br>장르: %{fullData.name}<br>개봉일 스크린수: %{x:,}개<br>총 관객수: %{y:,}명<br>첫 주 관객수: %{marker.size:,}명<extra></extra>'
 )
@@ -217,3 +217,31 @@ st.plotly_chart(fig_bubble, use_container_width=True)
 
 # 그래프 해석 구역
 st.info("**이 그래프로 알 수 있는 것:** 개봉 초기의 스크린 확보 수(X축)와 첫 주 관객 동원력(버블 크기)이 최종 흥행 성과(Y축)에 어떤 복합적인 영향을 주는지 입체적으로 비교할 수 있습니다.")
+
+st.divider()
+
+# ---------------------------------------------------------
+# 일곱 번째 그래프: 제작 국가별 장르 분포 (선버스트 차트)
+# ---------------------------------------------------------
+st.header("7. 제작 국가 및 장르별 영화 편수 분포 (선버스트 차트)")
+
+# 국가별, 장르별 영화 편수 집계
+nation_genre_counts = df.groupby(['nation', 'genre']).size().reset_index(name='count')
+
+# 선버스트 차트 생성 (nation -> genre 계층 structure)
+fig_sunburst = px.sunburst(
+    nation_genre_counts,
+    path=['nation', 'genre'],
+    values='count',
+    title="제작 국가 및 장르별 영화 편수 (크기: 영화 편수)"
+)
+
+# 툴팁 설정
+fig_sunburst.update_traces(
+    hovertemplate='<b>%{label}</b><br>영화 편수: %{value}편<extra></extra>'
+)
+
+st.plotly_chart(fig_sunburst, use_container_width=True)
+
+# 그래프 해석 구역
+st.info("**이 그래프로 알 수 있는 것:** 영화를 제작한 국가별 비중과 각 국가 내에서 주류를 이루는 장르 구성을 원형 계층 구조로 직관적으로 파악할 수 있습니다.")
