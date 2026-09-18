@@ -73,7 +73,6 @@ try:
     # 두 번째 그래프: 장르 및 영화별 총 관객 수 트리맵
     st.subheader("2. 장르 및 영화별 총 관객 수 분포 (트리맵)")
     
-    # 계층형 트리맵 생성 (장르 -> 영화명)
     fig2 = px.treemap(
         df,
         path=[px.Constant("전체"), 'genre', 'movieNm'],
@@ -82,7 +81,6 @@ try:
         color_discrete_sequence=px.colors.qualitative.Pastel
     )
     
-    # 마우스 호버 시 영화명과 총 관객 수 표시
     fig2.update_traces(
         hovertemplate="<b>영화명/구분:</b> %{label}<br><b>총 관객 수:</b> %{value:,}명<extra></extra>"
     )
@@ -99,5 +97,44 @@ try:
         st.markdown("💡 **이 그래프로 알 수 있는 것**")
         st.info("장르별 총 관객 수의 규모와 각 장르 내에서 어떤 영화가 박스오피스 흥행을 주도했는지 한눈에 비교할 수 있습니다.")
         
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    
+    # 세 번째 그래프: 총 관객 수 히스토그램
+    st.subheader("3. 총 관객 수(total_audi) 분포 히스토그램")
+    
+    fig3 = px.histogram(
+        df,
+        x='total_audi',
+        nbins=30,
+        labels={'total_audi': '총 관객 수 (명)', 'count': '영화 수'},
+        color_discrete_sequence=['#636EFA']
+    )
+    
+    fig3.update_traces(
+        hovertemplate="<b>관객 수 구간:</b> %{x}명<br><b>영화 수:</b> %{y}편<extra></extra>"
+    )
+    
+    fig3.update_layout(
+        xaxis_title="총 관객 수 (명)",
+        yaxis_title="영화 수 (편)",
+        margin=dict(t=20, b=20, l=20, r=20)
+    )
+    
+    st.plotly_chart(fig3, use_container_width=True)
+    
+    # 데이터 기반 분석 문구 동적 계산 (최대 관객 영화 정보)
+    top_movie = df.loc[df['total_audi'].idxmax()]
+    top_movie_name = top_movie['movieNm']
+    top_movie_audi = top_movie['total_audi']
+    
+    # 그래프 3 해석 구역
+    st.divider()
+    with st.container():
+        st.markdown("💡 **이 그래프로 알 수 있는 것**")
+        st.info(
+            f"대부분의 영화가 총 관객 수 **200만 명 이하**의 하위 구간에 모여 있으며, "
+            f"가장 관객 수가 많은 영화는 **'{top_movie_name}'**(총 {top_movie_audi:,}명)입니다."
+        )
+
 except Exception as e:
     st.error(f"데이터를 불러오는 중 오류가 발생했습니다: {e}")
