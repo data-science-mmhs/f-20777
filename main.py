@@ -251,5 +251,37 @@ try:
         st.markdown("💡 **이 그래프로 알 수 있는 것**")
         st.info("버블의 크기(개봉 첫 주 관객 수)를 통해 초반 흥행 화제성(초반 집객력)이 최종 총 관객 수 및 개봉일 스크린 수 확보와 얼마나 밀접하게 연관되어 있는지 입체적으로 비교 분석할 수 있습니다.")
 
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    
+    # 일곱 번째 그래프: 제작 국가 -> 장르 선버스트 그래프 (영화 편수 기반)
+    st.subheader("7. 제작 국가 및 장르별 영화 편수 분포 (선버스트)")
+    
+    # 국가별, 장르별 영화 편수 집계
+    df_nation_genre = df.groupby(['nation', 'genre']).size().reset_index(name='movie_count')
+    
+    fig7 = px.sunburst(
+        df_nation_genre,
+        path=['nation', 'genre'],
+        values='movie_count',
+        color='nation',
+        color_discrete_sequence=px.colors.qualitative.Pastel
+    )
+    
+    fig7.update_traces(
+        hovertemplate="<b>구분:</b> %{label}<br><b>영화 편수:</b> %{value}편<br><b>상위 계층 대비 비율:</b> %{percentParent:.1%}<extra></extra>"
+    )
+    
+    fig7.update_layout(
+        margin=dict(t=20, b=20, l=20, r=20)
+    )
+    
+    st.plotly_chart(fig7, use_container_width=True)
+    
+    # 그래프 7 해석 구역
+    st.divider()
+    with st.container():
+        st.markdown("💡 **이 그래프로 알 수 있는 것**")
+        st.info("제작 국가별 전체 영화 수의 비중과 함께, 각 국가 내부에서 주로 제작·수입된 장르별 구성 비율을 다층 원형 구조로 한눈에 탐색할 수 있습니다.")
+
 except Exception as e:
     st.error(f"데이터를 불러오는 중 오류가 발생했습니다: {e}")
