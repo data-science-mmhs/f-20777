@@ -210,5 +210,46 @@ try:
         st.markdown("💡 **이 그래프로 알 수 있는 것**")
         st.info("주요 장르별 관객 수의 중앙값과 대다수 영화의 관객 수 범위를 비교할 수 있으며, 상자 밖의 점(이상치)을 통해 해당 장르에서 압도적인 흥행을 기록한 대표 영화들을 한눈에 확인할 수 있습니다.")
 
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    
+    # 여섯 번째 그래프: 개봉 첫 주 관객 수가 반영된 버블 차트
+    st.subheader("6. 개봉일 스크린 수, 총 관객 수, 개봉 첫 주 관객 수의 관계 (버블 차트)")
+    
+    fig6 = px.scatter(
+        df,
+        x='first_scrn',
+        y='total_audi',
+        size='first_week_audi',
+        color='genre',
+        hover_name='movieNm',
+        hover_data={'first_scrn': ':,', 'total_audi': ':,', 'first_week_audi': ':,', 'genre': True},
+        labels={
+            'first_scrn': '개봉일 스크린 수 (개)', 
+            'total_audi': '총 관객 수 (명)', 
+            'first_week_audi': '개봉 첫 주 관객 수 (명)',
+            'genre': '장르'
+        },
+        size_max=50,
+        color_discrete_sequence=px.colors.qualitative.Pastel
+    )
+    
+    fig6.update_traces(
+        hovertemplate="<b>%{hovertext}</b><br><br><b>장르:</b> %{customdata[0]}<br><b>개봉일 스크린 수:</b> %{x:,}개<br><b>총 관객 수:</b> %{y:,}명<br><b>개봉 첫 주 관객 수:</b> %{marker.size:,}명<extra></extra>"
+    )
+    
+    fig6.update_layout(
+        xaxis_title="개봉일 스크린 수 (개)",
+        yaxis_title="총 관객 수 (명)",
+        margin=dict(t=20, b=20, l=20, r=20)
+    )
+    
+    st.plotly_chart(fig6, use_container_width=True)
+    
+    # 그래프 6 해석 구역
+    st.divider()
+    with st.container():
+        st.markdown("💡 **이 그래프로 알 수 있는 것**")
+        st.info("버블의 크기(개봉 첫 주 관객 수)를 통해 초반 흥행 화제성(초반 집객력)이 최종 총 관객 수 및 개봉일 스크린 수 확보와 얼마나 밀접하게 연관되어 있는지 입체적으로 비교 분석할 수 있습니다.")
+
 except Exception as e:
     st.error(f"데이터를 불러오는 중 오류가 발생했습니다: {e}")
