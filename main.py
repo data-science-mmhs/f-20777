@@ -27,6 +27,14 @@ def load_data():
             .apply(lambda x: x.split('|')[0].strip() if x else '기타')
         )
         
+    # 개봉월 전처리: openDt(또는 release_date) 컬럼에서 월(Month) 정보 추출
+    date_col = 'openDt' if 'openDt' in df.columns else ('release_date' if 'release_date' in df.columns else None)
+    if date_col:
+        df['open_month'] = pd.to_datetime(df[date_col].astype(str), errors='coerce').dt.month
+        df['open_month_str'] = df['open_month'].apply(lambda x: f"{int(x)}월" if pd.notnull(x) else "미상")
+    else:
+        df['open_month_str'] = "미상"
+        
     return df
 
 try:
@@ -282,6 +290,53 @@ try:
     with st.container():
         st.markdown("💡 **이 그래프로 알 수 있는 것**")
         st.info("제작 국가별 전체 영화 수의 비중과 함께, 각 국가 내부에서 주로 제작·수입된 장르별 구성 비율을 다층 원형 구조로 한눈에 탐색할 수 있습니다.")
+
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    
+    # 여덟 번째 그래프: 개봉월별 장르 분포 (히트맵)
+    st.subheader("8. 개봉월별 장르 분포 (밀도 히트맵)")
+    
+    # 월 순서 정렬을 위한 데이터 정리
+    df_valid_month = df[df['open_month'].notnull()].copy()
+    df_valid_month['open_month'] = df_valid_month['open_month'].astype(int)
+    
+    # 개봉월과 장르 조합별 영화 편수 계산
+    month_genre_counts = df_valid_month.groupby(['open_month', 'genre']).size().reset_index(name='movie_count')
+    month_genre_counts['month_label'] = month_genre_counts['open_month'].apply(lambda x: f"{x}월")
+    
+    # 1월부터 12월까지 순서대로 배치하기 위한 Pivot Table
+    pivot_df = month_genre_counts.pivot(index='genre', columns='open_month', values='movie_count').fillna(0)
+    month_columns = [f"{m}월" for m in pivot_df.columns]
+    
+    fig8 = px.imshow(
+        pivot_df.values,
+        labels=dict(x="개봉월", y="장르", color="개봉 편수"),
+        x=month_columns,
+        y=pivot_df.index,
+        color_continuous_scale="Blues",
+        text_auto=True
+    )
+    
+    fig8.update_traces(
+        hovertemplate="<b>개봉월:</b> %{x}<br><b>장르:</b> %{y}<br><b>개봉 영화 수:</b> %{z}편<extra></extra>"
+    )
+    
+    fig8.update_layout(
+        xaxis_title="개봉월",
+        yaxis_title="장르",
+        margin=dict(t=20, b=20, l=20, r=20)
+    )
+    
+    st.plotly_chart(fig8, use_container_width=True)
+    
+    # 그래프 8 해석 구역
+    st.divider()
+    with st.container():
+        st.markdown("💡 **이 그래프로 알 수 있는 것**")
+        st.info(
+            "• **계절성 및 시즌별 선호 장르**: 여름/겨울 성수기(7~8월, 12~1월)나 명절 시즌(추석/설날)에 액션, 애니메이션, 코미디 등 특정 장르가 집중적으로 개봉하는 경향을 확인할 수 있습니다.\n\n"
+            "• **월별 장르 집중도**: 특정 월에 특정 장르 영화가 몰리는 현상이나, 연중 꾸준히 개봉하는 장르와 특정 시기에만 등장하는 장르의 차이를 비교할 수 있습니다."
+        )
 
 except Exception as e:
     st.error(f"데이터를 불러오는 중 오류가 발생했습니다: {e}")
