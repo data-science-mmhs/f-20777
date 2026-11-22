@@ -2,8 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
-import scipy.stats as stats
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import (
     r2_score,
@@ -56,20 +54,10 @@ def load_and_train():
         }
     )
 
-    eval_df = pd.DataFrame(
-        {
-            "y_test_log": y_test,
-            "y_pred_log": y_pred_log,
-            "residuals_log": y_test - y_pred_log,
-            "actual_dollar": y_actual_dollar,
-            "pred_dollar": y_pred_dollar,
-        }
-    )
-
-    return model, feature_cols, metrics, coef_df, eval_df
+    return model, feature_cols, metrics, coef_df
 
 
-model, feature_cols, metrics, coef_df, eval_df = load_and_train()
+model, feature_cols, metrics, coef_df = load_and_train()
 
 # 3. 헤더 영역
 st.title("💎 다이아몬드 가격 예측 다중 선형 회귀 분석")
@@ -80,7 +68,7 @@ st.caption(
 
 # 4. 탭 구성
 tab1, tab2, tab3 = st.tabs(
-    ["🔮 실시간 가격 예측", "📊 모델 성능 및 회귀 계수", "🔬 잔차 진단 및 데이터 정제 요약"]
+    ["🔮 실시간 가격 예측", "📊 모델 성능 및 회귀 계수", "🧹 데이터 정제 및 전처리 상세"]
 )
 
 # ==============================================================================
@@ -136,7 +124,6 @@ with tab1:
     input_df = pd.DataFrame([input_dict])[feature_cols]
     pred_log_val = model.predict(input_df)[0]
     pred_dollar_val = np.exp(pred_log_val)
-    # 로그 잔차 표준편차(~0.135) 기반 대략적 ±1σ 구간
     low_bound = np.exp(pred_log_val - 0.1353)
     high_bound = np.exp(pred_log_val + 0.1353)
 
@@ -180,63 +167,96 @@ with tab2:
         st.dataframe(coef_df.round(4), use_container_width=True)
 
 # ==============================================================================
-# TAB 3: 잔차 진단 및 데이터 정제 요약
+# TAB 3: 데이터 정제 및 전처리 상세 기록
 # ==============================================================================
 with tab3:
-    st.subheader("데이터 정제 및 전처리 파이프라인 요약")
-    summary_steps = pd.DataFrame(
+    st.subheader("1. 단계별 데이터 정제 및 전처리 전체 이력")
+    st.markdown(
+        "원본 `diamonds.csv` 데이터(53,940건)에서 결측치(0건)를 확인한 뒤, "
+        "선형 회귀 모델의 통계적 가정과 수치 안정성을 확보하기 위해 아래 6단계 전처리를 수행했습니다."
+    )
+
+    pipeline_detail = pd.DataFrame(
         {
-            "단계": ["0. 원본", "1. 중복 제거", "2. 0값 제거", "3. 이상치 제거", "4. 최종 피처 확정"],
-            "처리 내용": [
-                "초기 데이터 로드",
-                "완전 중복 146건 삭제",
-                "물리적 치수(x,y,z) 0값 19건 삭제",
-                "명백한 표기 오류 3건 삭제",
-                "x,y,z 제거(VIF 해소) + log(carat), log(price) 변환 + 원-핫 인코딩",
+            "단계": [
+                "0단계: 원본 데이터 로드",
+                "1단계: 완전 중복 행 제거",
+                "2단계: 물리적 0값 정제",
+                "3단계: 명백한 입력 오류 제거",
+                "4단계: 범주형 변수 원-핫 인코딩",
+                "5단계: 피처 선택 및 로그 변환",
+                "6단계: 8:2 층화 분할",
             ],
-            "데이터 규모": ["53,940행 × 10열", "53,794행 × 10열", "53,775행 × 10열", "53,772행 × 10열", "53,772행 × 21열"],
+            "세부 처리 기준 및 적용 방법": [
+                "diamonds.csv 초기 로드 (수치형 7열, 범주형 3열, 결측치 0건 확인)",
+                "모든 열 값이 완전히 동일한 중복 레코드 탐지 후 첫 행만 유지 (drop_duplicates)",
+                "실물 보석에서 불가능한 가로·세로·깊이 치수(x, y, z) 중 하나라도 0인 행 삭제",
+                "소수점 오기 및 열 밀림으로 판단되는 극단적 기하학 오류 3건 삭제 (y=58.9, z=31.8, y=31.8)",
+                "cut(5등급), color(7등급), clarity(8등급)에 대해 다중공선성 방지를 위한 기준 범주 제외 인코딩 (drop_first=True)",
+                "VIF > 1,000을 유발하는 x, y, z 열 삭제 후 carat·price 자연로그(np.log) 변환 적용",
+                "가격 오름차순 정렬 편향 방지를 위해 log_price를 10개 분위수(Decile)로 나눈 뒤 8:2 층화 분할 (random_state=42)",
+            ],
+            "변화 내역": [
+                "기준 데이터셋",
+                "-146건 삭제",
+                "-19건 삭제",
+                "-3건 삭제",
+                "+14열 확장 (더미 17열 생성)",
+                "-3열 삭제, 스케일 변환",
+                "Train 43,017 / Test 10,755",
+            ],
+            "데이터 규모": [
+                "53,940행 × 10열",
+                "53,794행 × 10열",
+                "53,775행 × 10열",
+                "53,772행 × 10열",
+                "53,772행 × 24열",
+                "53,772행 × 21열",
+                "Train 80% / Test 20%",
+            ],
         }
     )
-    st.table(summary_steps)
+    st.dataframe(pipeline_detail, use_container_width=True, hide_index=True)
 
-    st.subheader("테스트 세트 잔차 진단 시각화 (n = 10,755)")
-    residuals = eval_df["residuals_log"]
-    fitted = eval_df["y_pred_log"]
+    st.divider()
+    st.subheader("2. 주요 전처리 의사결정 및 기술적 근거")
 
-    fig_res, axes = plt.subplots(2, 2, figsize=(13, 10))
+    col_a, col_b = st.columns(2)
 
-    # 1. Residuals vs Fitted
-    axes[0, 0].scatter(fitted, residuals, alpha=0.15, s=8, color="#2b5c8f", edgecolors="none")
-    axes[0, 0].axhline(0, color="#d62728", linestyle="--", linewidth=1.3)
-    axes[0, 0].set_title("1. Residuals vs. Fitted (log_price)")
-    axes[0, 0].set_xlabel("Fitted Values")
-    axes[0, 0].set_ylabel("Residuals")
-    axes[0, 0].grid(True, alpha=0.3)
+    with col_a:
+        st.markdown("#### ① 다중공선성(Multicollinearity) 해소")
+        st.markdown(
+            """
+            - **문제 진단**: 무게(`carat`)와 물리적 크기(`x, y, z`) 간 상관계수가 0.95 이상이며, 분산팽창지수(**VIF > 1,000**)로 회귀 계수의 분산이 크게 팽창함.
+            - **해결 조치**: 치수 변수 **`x`, `y`, `z`를 모두 제거**하고 무게(`carat`), 깊이 비율(`depth`), 테이블 비율(`table`)만 유지하여 독립변수 간 선형 종속성을 제거함.
+            """
+        )
 
-    # 2. Residual Histogram
-    sns.histplot(residuals, bins=60, kde=True, stat="density", color="#2b5c8f", alpha=0.5, ax=axes[0, 1])
-    x_grid = np.linspace(residuals.min(), residuals.max(), 200)
-    axes[0, 1].plot(x_grid, stats.norm.pdf(x_grid, residuals.mean(), residuals.std()), "r--", linewidth=1.5)
-    axes[0, 1].set_title("2. Residual Distribution vs. Normal")
-    axes[0, 1].set_xlabel("Residuals")
-    axes[0, 1].grid(True, alpha=0.3)
+        st.markdown("#### ② 범주형 인코딩 기준 (Reference Category)")
+        st.markdown(
+            """
+            - 더미 변수 함정(Dummy Variable Trap) 방지를 위해 각 등급의 최하위 카테고리를 기준(0)으로 설정하고 **총 17개 더미 변수** 생성:
+              - **Cut (4열)**: `Good`, `Very Good`, `Premium`, `Ideal` *(기준: `Fair`)*
+              - **Color (6열)**: `I`, `H`, `G`, `F`, `E`, `D` *(기준: `J`)*
+              - **Clarity (7열)**: `SI2`, `SI1`, `VS2`, `VS1`, `VVS2`, `VVS1`, `IF` *(기준: `I1`)*
+            """
+        )
 
-    # 3. Q-Q Plot
-    stats.probplot(residuals, dist="norm", plot=axes[1, 0])
-    axes[1, 0].get_lines()[0].set_markersize(3)
-    axes[1, 0].get_lines()[0].set_alpha(0.35)
-    axes[1, 0].set_title("3. Normal Q-Q Plot")
-    axes[1, 0].grid(True, alpha=0.3)
+    with col_b:
+        st.markdown("#### ③ `carat` 및 `price` 자연로그(`np.log`) 변환 근거")
+        st.markdown(
+            """
+            - **비선형 관계 직선화**: 다이아몬드 가격은 무게 증가에 따라 지수적으로 급등하므로 양변에 자연로그를 취해 1:1 선형 비례 관계로 변환함.
+            - **음수($) 예측 원천 차단**: `price` 원본으로 학습 시 소형 다이아몬드 **1,857건이 마이너스(-) 가격으로 예측**되는 문제를 `np.exp()` 역변환 구조로 완전히 해결함.
+            - **예측 오차 절반 감소**: 테스트 RMSE가 `$1,832.93`에서 **`$807.59`**로 55% 이상 개선됨.
+            """
+        )
 
-    # 4. Actual vs Predicted ($)
-    axes[1, 1].scatter(eval_df["actual_dollar"], eval_df["pred_dollar"], alpha=0.15, s=8, color="#2ca02c", edgecolors="none")
-    axes[1, 1].plot([0, 20000], [0, 20000], "r--", linewidth=1.3)
-    axes[1, 1].set_xlim(0, 20000)
-    axes[1, 1].set_ylim(0, 22000)
-    axes[1, 1].set_title("4. Actual vs. Predicted Price ($)")
-    axes[1, 1].set_xlabel("Actual Price ($)")
-    axes[1, 1].set_ylabel("Predicted Price ($)")
-    axes[1, 1].grid(True, alpha=0.3)
-
-    plt.tight_layout()
-    st.pyplot(fig_res)
+        st.markdown("#### ④ 최종 모델 입력 변수 구조 (총 21열)")
+        st.markdown(
+            """
+            - **독립변수 (20개)**: `log_carat`, `depth`, `table` (3개) + 범주형 더미 (17개)
+            - **타겟 변수 (1개)**: `log_price` (예측 시 지수 함수 `np.exp()`로 USD 환산)
+            - **분할 검증**: Train 평균 `$3,929.77` / Test 평균 `$3,936.62`로 가격대별 분포 동일하게 유지
+            """
+        )
